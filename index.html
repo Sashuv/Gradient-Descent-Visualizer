@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gradient Descent Visualizer</title>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js" charset="utf-8"></script>
+
+
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #view {
+            width: 80%;
+            height: 80vh;
+        }
+
+        #btn_stats {    
+            display: flex;
+            width: 80%;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        #stats {
+            flex: 1;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        #stats p {
+            margin: 5px;
+        }
+
+        #button {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #button button {
+            margin: 5px 0;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: #fff;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #button button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Gradient Descent</h1>
+        <p>Data changes everytime you refresh.</p>
+    </div>
+    <div id="view"></div>
+
+    <div id="btn_stats">
+        <div id="stats">
+            <p id="learning_rate">Learning Rate: 0</p>
+            <p id="m">Initial Slope: 0</p>
+            <p id="b">Initial Intercept: 0</p>
+            <p id="epochs">Epochs: 0</p>
+            <p id="iteration">Iterations: 0</p>
+            <p id="slope">Slope: 0</p>
+            <p id="intercept">Intercept: 0</p>
+        </div>
+        <div id="button">
+            <button onclick="nextIteration()">Next Iteration</button>
+            <button onclick="Play()">Play</button>
+        </div>
+    </div>
+
+
+    <script>
+
+        function generateRandomData() {
+            let len = [16, 30, 25, 24];
+            const random = Math.floor(Math.random() * len.length);
+            let X = [];
+            let Y = [];
+            for (let i = 0; i < len[random]; i++) {
+                // Generate array X from range (-1, 2)
+                X.push(Math.random() * 3 - 1);
+
+                // Generate corresponding array Y which is linearly related to X in the range (-10 to 10)
+                Y.push(-10 + (20 * Math.random()));
+            }
+            return { X, Y };
+        }
+
+
+        const randomfunc = generateRandomData();
+
+        // Given data points
+        var trace1 = {
+
+            x: randomfunc.X,
+            y: randomfunc.Y,
+            mode: 'markers',
+            type: 'scatter',
+            name: 'Training Data',
+            marker: { size: 12 }
+        };
+
+        // Variable Initialization
+        let m = 100;
+        let b = -120;
+        let learning_rate = 0.001;
+        let epochs = 100;
+        let lr_x = [];
+        let lr_y = [];
+        let ms = [];
+        let bs = [];
+        let gradient_intercept_sum = 0;
+        let gradient_slope_sum = 0;
+        let gradient_slope = 0;
+        let gradient_intercept = 0;
+        let x_minValue = Math.min(...trace1.x);
+        let x_maxValue = Math.max(...trace1.x);
+        let y_minValue = Math.min(...trace1.y);
+        let y_maxValue = Math.max(...trace1.y);
+
+
+
+        document.getElementById("m").innerText = `Initial Slope: ${m}`;
+        document.getElementById("learning_rate").innerText = `Learning Rate: ${learning_rate}`;
+        document.getElementById("b").innerText = `Initial Intercept: ${b}`;
+        document.getElementById("epochs").innerText = `Epochs: ${epochs}`;
+
+        // Getting the coordinates for the line
+        for (let i = 0; i <= 10; i++) {
+            lr_x.push(i);
+            lr_y.push(m * i + b);
+        }
+        let animationInterval;
+        let animationPlaying = false;
+
+
+        function updatePlot() {
+            gradient_intercept_sum = 0;
+            gradient_slope_sum = 0;
+
+            // Calculating the summation
+            for (let j = 0; j < trace1.x.length; j++) {
+                gradient_intercept_sum += trace1.y[j] - m * trace1.x[j] - b;
+                gradient_slope_sum += (trace1.y[j] - m * trace1.x[j] - b) * trace1.x[j];
+            }
+
+            // Gradient Descent
+            gradient_intercept = -2 * gradient_intercept_sum;
+            gradient_slope = -2 * gradient_slope_sum;
+            m = m - (learning_rate * gradient_slope);
+            b = b - (learning_rate * gradient_intercept);
+            ms.push(m);
+            bs.push(b);
+
+            // Update the best-fit line data
+            trace2.y = lr_y.map((yVal, index) => ms[ms.length - 1] * lr_x[index] + bs[bs.length - 1]);
+
+            // Update the plot
+            Plotly.redraw('view');
+
+            // Update the stats
+            document.getElementById("iteration").innerText = `Iterations: ${ms.length}`;
+            document.getElementById("slope").innerText = `Slope: ${ms[ms.length - 1]}`;
+            document.getElementById("intercept").innerText = `Intercept: ${bs[bs.length - 1]}`;
+
+            if (ms.length >= epochs) {
+                clearInterval(animationInterval);
+                animationPlaying = false;
+                console.log("Gradient Descent iterations completed.");
+            }
+        }
+
+        var trace2 = {
+            x: lr_x,
+            y: lr_y,
+            mode: 'lines',
+            type: 'scatter',
+            name: 'Best Fit Line',
+            marker: { size: 12 }
+        };
+
+        // Create the plot
+        var data = [trace1, trace2];
+        var layout = {
+            xaxis: {
+                range: [x_minValue - 10, x_maxValue + 10]
+            },
+            yaxis: {
+                range: [y_minValue - 10, y_maxValue + 10]
+            },
+            title: 'Finding the Best Fit Line using Gradient Descent'
+        };
+
+        Plotly.newPlot('view', data, layout);
+
+        function nextIteration() {
+            if (ms.length < epochs) {
+                updatePlot();
+            } else {
+                console.log("Gradient Descent iterations completed.");
+            }
+        }
+
+        function Play() {
+            if (!animationPlaying && ms.length < epochs) {
+                animationPlaying = true;
+                animationInterval = setInterval(updatePlot, 50);
+            }
+        }
+    </script>
+</body>
+
+</html>
